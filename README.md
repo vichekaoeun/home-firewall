@@ -72,14 +72,14 @@ Ansible runs on the control host and reaches the firewall through Docker Compose
 
 ## Validation
 
-| ID | Path | Expected | Result |
-|---|---|---|---|
-| A1 | External client → Web server (DNAT, TCP 8080) | Allow | Pass |
-| A2 | Web server → Internal API (TCP 8080) | Allow | Pass |
-| A3 | Internal API → Database (TCP 5432) | Allow | Pass |
-| B1 | External client → Internal API | Block | Pass |
-| B2 | External client → Database | Block | Pass |
-| B3 | Web server → Database | Block | Pass |
+| ID | Path | Expected |
+|---|---|---|
+| A1 | External client → Web server (DNAT, TCP 8080) | Allow |
+| A2 | Web server → Internal API (TCP 8080) | Allow |
+| A3 | Internal API → Database (TCP 5432) | Allow |
+| B1 | External client → Internal API | Block |
+| B2 | External client → Database | Block |
+| B3 | Web server → Database | Block |
 
 ## Getting started
 
@@ -141,7 +141,6 @@ ansible-playbook -i ansible/inventory.ini ansible/firewall.yml
 ├── monitoring/
 │   ├── prometheus.yml
 │   └── firewall_exporter.py
-└── docs/security-test-report.md
 ```
 
 ## Tech stack
