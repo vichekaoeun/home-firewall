@@ -1,0 +1,153 @@
+services:
+
+  firewall:
+    build: ./firewall
+    container_name: firewall
+    hostname: firewall
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    networks:
+      external_net:
+        ipv4_address: 10.10.10.2
+      dmz_net:
+        ipv4_address: 10.10.20.2
+      internal_net:
+        ipv4_address: 10.10.30.2
+      database_net:
+        ipv4_address: 10.10.40.2
+
+  external-client:
+    build: ./firewall
+    container_name: external-client
+    hostname: external-client
+    cap_add:
+      - NET_ADMIN
+    networks:
+      external_net:
+        ipv4_address: 10.10.10.10
+
+  web-server:
+    build: ./firewall
+    container_name: web-server
+    hostname: web-server
+    cap_add:
+      - NET_ADMIN
+    networks:
+      dmz_net:
+        ipv4_address: 10.10.20.10
+
+  internal-api:
+    build: ./firewall
+    container_name: internal-api
+    hostname: internal-api
+    cap_add:
+      - NET_ADMIN
+    networks:
+      internal_net:
+        ipv4_address: 10.10.30.10
+
+  database:
+    build: ./firewall
+    container_name: database
+    hostname: database
+    cap_add:
+      - NET_ADMIN
+    networks:
+      database_net:
+        ipv4_address: 10.10.40.20
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    network_mode: "service:firewall"
+    depends_on:
+      - firewall
+    command:
+      - "--collector.disable-defaults"
+      - "--collector.netdev"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - dmz_net
+      - monitoring_net
+    depends_on:
+      - node-exporter
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring_net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  firewall-exporter:
+    build:
+      context: ./firewall
+    container_name: firewall-exporter
+    network_mode: "service:firewall"
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - firewall
+    volumes:
+      - ./monitoring/firewall_exporter.py:/app/firewall_exporter.py:ro
+    command: ["python3", "/app/firewall_exporter.py"]
+    restart: unless-stopped
+
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+
+  external_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+
+  dmz_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.20.0/24
+
+  internal_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.30.0/24
+
+  database_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.40.0/24
+
+  monitoring_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.50.0/24

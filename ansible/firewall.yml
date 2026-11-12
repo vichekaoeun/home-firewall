@@ -1,0 +1,38 @@
+---
+- name: Manage Network Security Gateway
+  hosts: firewalls
+  gather_facts: false
+
+  vars:
+    project_root: "{{ playbook_dir }}/.."
+    firewall_config: "{{ project_root }}/configs/nftables.conf"
+
+  tasks:
+    - name: Validate nftables configuration
+      ansible.builtin.command:
+        cmd: docker compose exec -T firewall nft -c -f -
+        chdir: "{{ project_root }}"
+        stdin: "{{ lookup('file', firewall_config) }}"
+      changed_when: false
+
+    - name: Apply nftables configuration
+      ansible.builtin.command:
+        cmd: docker compose exec -T firewall nft -f -
+        chdir: "{{ project_root }}"
+        stdin: "{{ lookup('file', firewall_config) }}"
+      register: firewall_apply
+
+    - name: Display deployment result
+      ansible.builtin.debug:
+        msg: "Firewall configuration successfully applied."
+
+    - name: Verify forwarding chain
+      ansible.builtin.command:
+        cmd: docker compose exec -T firewall nft list chain inet filter forward
+        chdir: "{{ project_root }}"
+      register: firewall_status
+      changed_when: false
+
+    - name: Display forwarding rules
+      ansible.builtin.debug:
+        var: firewall_status.stdout_lines
